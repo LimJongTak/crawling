@@ -1,0 +1,49 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  slug      String   @unique
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  sources   Source[]
+}
+
+// SQLite는 네이티브 enum을 지원하지 않아 문자열로 관리한다: "GENERIC_LINKS" | "KAGGLE_API"
+model Source {
+  id             String    @id @default(cuid())
+  name           String
+  url            String
+  type           String    @default("GENERIC_LINKS")
+  linkPattern    String? // 목록 페이지에서 상세글 링크를 찾는 정규식 (GENERIC_LINKS 타입에서 사용)
+  isActive       Boolean   @default(true)
+  lastCrawledAt  DateTime?
+  lastStatus     String? // "success" | "error"
+  lastError      String?
+  lastFoundCount Int       @default(0)
+  createdAt      DateTime  @default(now())
+  categoryId     String
+  category       Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  posts          Post[]
+}
+
+model Post {
+  id          String   @id @default(cuid())
+  title       String
+  url         String   @unique
+  dateLabel   String? // 원본 사이트에 표기된 날짜/마감일 텍스트 (형식이 제각각이라 원문 그대로 저장)
+  postedAt    DateTime? // dateLabel을 실제 날짜로 파싱한 값 (정렬용). 파싱 불가 시 null -> firstSeenAt로 대체
+  firstSeenAt DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+  sourceId    String
+  source      Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@index([sourceId])
+}

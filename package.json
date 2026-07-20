@@ -1,0 +1,43 @@
+{
+  "name": "crawling-tracker",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:generate": "prisma generate",
+    "seed": "tsx prisma/seed.ts",
+    "cron": "tsx scripts/cron-worker.ts",
+    "postinstall": "prisma generate"
+  },
+  "dependencies": {
+    "next": "14.2.35",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "@prisma/client": "^5.18.0",
+    "cheerio": "^1.0.0",
+    "bcryptjs": "^2.4.3",
+    "jose": "^5.6.3",
+    "node-cron": "^3.0.3"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "@types/node": "^20.14.15",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node-cron": "^3.0.11",
+    "domhandler": "^5.0.3",
+    "prisma": "^5.18.0",
+    "tsx": "^4.16.5",
+    "tailwindcss": "^3.4.7",
+    "postcss": "^8.4.41",
+    "autoprefixer": "^10.4.19"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  }
+}
