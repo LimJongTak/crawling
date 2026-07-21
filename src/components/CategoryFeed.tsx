@@ -47,6 +47,7 @@ export default function CategoryFeed({ posts }: { posts: FeedPost[] }) {
 
   const [selectedSourceId, setSelectedSourceId] = useState<string | "all">("all");
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
+  const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [loadingKey, setLoadingKey] = useState<string | null>(null);
@@ -98,15 +99,32 @@ export default function CategoryFeed({ posts }: { posts: FeedPost[] }) {
     setPage(1);
   }
 
+  function updateSearch(value: string) {
+    setSearch(value);
+    setPage(1);
+  }
+
   const visiblePosts = useMemo(() => {
-    const filtered =
+    const bySource =
       selectedSourceId === "all" ? posts : posts.filter((p) => p.sourceId === selectedSourceId);
+
+    const query = search.trim().toLowerCase();
+    const filtered = query
+      ? bySource.filter((p) => {
+          const plainContent = p.content?.replace(/<[^>]+>/g, " ").toLowerCase() ?? "";
+          return (
+            p.title.toLowerCase().includes(query) ||
+            plainContent.includes(query) ||
+            p.sourceName.toLowerCase().includes(query)
+          );
+        })
+      : bySource;
 
     return [...filtered].sort((a, b) => {
       const diff = new Date(a.sortTime).getTime() - new Date(b.sortTime).getTime();
       return sortOrder === "newest" ? -diff : diff;
     });
-  }, [posts, selectedSourceId, sortOrder]);
+  }, [posts, selectedSourceId, sortOrder, search]);
 
   const totalPages = Math.max(1, Math.ceil(visiblePosts.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -116,6 +134,35 @@ export default function CategoryFeed({ posts }: { posts: FeedPost[] }) {
 
   return (
     <div>
+      <div className="relative mb-3">
+        <svg
+          viewBox="0 0 24 24"
+          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400"
+        >
+          <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth={1.8} fill="none" />
+          <path d="M21 21l-4.3-4.3" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" fill="none" />
+        </svg>
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => updateSearch(e.target.value)}
+          placeholder="제목, 본문 내용으로 검색"
+          className="w-full rounded-xl border border-neutral-200 bg-white py-2.5 pl-9 pr-9 text-sm outline-none transition-colors focus:border-brand-400 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+        />
+        {search && (
+          <button
+            type="button"
+            onClick={() => updateSearch("")}
+            aria-label="검색어 지우기"
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-neutral-400 transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800"
+          >
+            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5">
+              <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" fill="none" />
+            </svg>
+          </button>
+        )}
+      </div>
+
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-1.5">
           <button
