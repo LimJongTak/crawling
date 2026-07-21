@@ -51,6 +51,8 @@ export default function CategoryFeed({ posts }: { posts: FeedPost[] }) {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [loadingKey, setLoadingKey] = useState<string | null>(null);
   const [contentCache, setContentCache] = useState<Record<string, string | null>>({});
+  const [preview, setPreview] = useState<{ post: FeedPost; html: string } | null>(null);
+  const [previewTab, setPreviewTab] = useState<"preview" | "code">("preview");
 
   async function copy(text: string, key: string) {
     try {
@@ -80,9 +82,10 @@ export default function CategoryFeed({ posts }: { posts: FeedPost[] }) {
     }
   }
 
-  async function copyHtml(post: FeedPost) {
+  async function openHtmlPreview(post: FeedPost) {
     const content = await resolveContent(post);
-    await copy(buildPostHtml({ ...post, content }), `${post.id}:html`);
+    setPreviewTab("preview");
+    setPreview({ post, html: buildPostHtml({ ...post, content }) });
   }
 
   function selectSource(id: string | "all") {
@@ -176,7 +179,6 @@ export default function CategoryFeed({ posts }: { posts: FeedPost[] }) {
         {pagedPosts.map((post) => {
           const color = sourceColor(post.sourceId);
           const titleCopied = copiedKey === `${post.id}:title`;
-          const htmlCopied = copiedKey === `${post.id}:html`;
 
           return (
             <li key={post.id}>
@@ -231,29 +233,21 @@ export default function CategoryFeed({ posts }: { posts: FeedPost[] }) {
 
                   <button
                     type="button"
-                    onClick={() => copyHtml(post)}
+                    onClick={() => openHtmlPreview(post)}
                     disabled={loadingKey === `${post.id}:html`}
-                    title="게시판 붙여넣기용 HTML 복사 (본문 포함 가능 시 자동 포함)"
-                    className={`flex items-center gap-1 rounded-lg border px-2 py-1.5 text-xs font-medium transition-colors disabled:opacity-60 ${
-                      htmlCopied
-                        ? "border-emerald-300 bg-emerald-50 text-emerald-600 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400"
-                        : "border-neutral-200 text-neutral-500 hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
-                    }`}
+                    title="HTML 미리보기 (게시판 붙여넣기용 본문 확인 후 복사)"
+                    className="flex items-center gap-1 rounded-lg border border-neutral-200 px-2 py-1.5 text-xs font-medium text-neutral-500 transition-colors hover:bg-neutral-100 disabled:opacity-60 dark:border-neutral-700 dark:hover:bg-neutral-800"
                   >
                     {loadingKey === `${post.id}:html` ? (
                       <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 animate-spin">
                         <path d="M21 12a9 9 0 11-9-9" stroke="currentColor" strokeWidth={2} strokeLinecap="round" fill="none" />
-                      </svg>
-                    ) : htmlCopied ? (
-                      <svg viewBox="0 0 24 24" className="h-3.5 w-3.5">
-                        <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" fill="none" />
                       </svg>
                     ) : (
                       <svg viewBox="0 0 24 24" className="h-3.5 w-3.5">
                         <path d="M8 9l-3 3 3 3M16 9l3 3-3 3M13 6l-2 12" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" fill="none" />
                       </svg>
                     )}
-                    <span className="hidden sm:inline">{htmlCopied ? "복사됨" : "HTML"}</span>
+                    <span className="hidden sm:inline">HTML</span>
                   </button>
                 </div>
               </div>
@@ -305,6 +299,85 @@ export default function CategoryFeed({ posts }: { posts: FeedPost[] }) {
               <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" fill="none" />
             </svg>
           </button>
+        </div>
+      )}
+
+      {preview && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => setPreview(null)}
+        >
+          <div
+            className="flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-xl dark:bg-neutral-900"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3 border-b border-neutral-200 px-4 py-3 dark:border-neutral-800">
+              <p className="min-w-0 truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+                {preview.post.title}
+              </p>
+              <button
+                type="button"
+                onClick={() => setPreview(null)}
+                className="shrink-0 rounded-lg p-1 text-neutral-400 transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                aria-label="닫기"
+              >
+                <svg viewBox="0 0 24 24" className="h-4 w-4">
+                  <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" fill="none" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="flex gap-1 px-4 pt-2">
+              {(["preview", "code"] as const).map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setPreviewTab(tab)}
+                  className={`rounded-t-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                    previewTab === tab
+                      ? "border border-b-0 border-neutral-200 bg-white text-neutral-900 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100"
+                      : "text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
+                  }`}
+                >
+                  {tab === "preview" ? "미리보기" : "코드"}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex-1 overflow-y-auto border-t border-neutral-200 p-4 dark:border-neutral-800">
+              {previewTab === "preview" ? (
+                <div
+                  className="text-sm leading-relaxed text-neutral-700 [&_a]:text-brand-600 [&_a]:underline [&_img]:max-w-full [&_p]:mb-2 dark:text-neutral-300 dark:[&_a]:text-brand-400"
+                  dangerouslySetInnerHTML={{ __html: preview.html }}
+                />
+              ) : (
+                <pre className="whitespace-pre-wrap break-all rounded-lg bg-neutral-100 p-3 text-xs text-neutral-700 dark:bg-neutral-950 dark:text-neutral-300">
+                  {preview.html}
+                </pre>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 border-t border-neutral-200 px-4 py-3 dark:border-neutral-800">
+              <button
+                type="button"
+                onClick={() => setPreview(null)}
+                className="rounded-lg border border-neutral-200 px-3 py-1.5 text-xs font-medium text-neutral-600 transition-colors hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+              >
+                닫기
+              </button>
+              <button
+                type="button"
+                onClick={() => copy(preview.html, `${preview.post.id}:html`)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                  copiedKey === `${preview.post.id}:html`
+                    ? "bg-emerald-600 text-white"
+                    : "bg-neutral-900 text-white hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200"
+                }`}
+              >
+                {copiedKey === `${preview.post.id}:html` ? "복사됨" : "복사하기"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
