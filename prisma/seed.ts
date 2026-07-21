@@ -46,6 +46,13 @@ async function main() {
       categoryId: job.id,
     },
     {
+      name: "잡코리아 건축·시설 전기기사 TOP100",
+      url: "https://www.jobkorea.co.kr/Top100/?Main_Career_Type=1&Search_Type=1&BizJobtype_Bctgr_Code=10043&BizJobtype_Bctgr_Name=%EA%B1%B4%EC%B6%95%C2%B7%EC%8B%9C%EC%84%A4&BizJobtype_Code=1000357&BizJobtype_Name=%EC%A0%84%EA%B8%B0%EA%B8%B0%EC%82%AC&Major_Big_Code=0&Major_Big_Name=%EC%A0%84%EC%B2%B4&Major_Code=0&Major_Name=%EC%A0%84%EC%B2%B4&Edu_Level_Code=9&Edu_Level_Name=%EC%A0%84%EC%B2%B4&MidScroll=&duty-depth1=on",
+      type: "GENERIC_LINKS" as const,
+      linkPattern: "/Recruit/GI_Read/\\d+",
+      categoryId: job.id,
+    },
+    {
       name: "순천대학교 모집·채용 게시판",
       url: "https://www.scnu.ac.kr/SCNU/na/ntt/selectNttList.do?mi=1189&bbsId=1068",
       type: "GENERIC_LINKS" as const,
