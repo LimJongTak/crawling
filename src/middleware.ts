@@ -4,6 +4,9 @@ import { SESSION_COOKIE } from "@/lib/auth";
 
 const PUBLIC_PATHS = ["/login"];
 const PUBLIC_API_PREFIXES = ["/api/auth/login", "/api/cron"];
+// Next.js가 파일 컨벤션으로 자동 생성하는 아이콘/매니페스트류는 로그인 없이도 내려줘야 한다
+// (로그인 페이지 자체가 파비콘을 못 불러오는 문제 방지).
+const PUBLIC_ASSET_PATTERN = /^\/(favicon\.ico|icon\.\w+|apple-icon\.\w+|manifest\.\w+)$/;
 
 async function isValidSession(token: string | undefined): Promise<boolean> {
   if (!token) return false;
@@ -22,7 +25,7 @@ export async function middleware(req: NextRequest) {
 
   if (
     pathname.startsWith("/_next") ||
-    pathname === "/favicon.ico" ||
+    PUBLIC_ASSET_PATTERN.test(pathname) ||
     PUBLIC_PATHS.includes(pathname) ||
     PUBLIC_API_PREFIXES.some((p) => pathname.startsWith(p))
   ) {

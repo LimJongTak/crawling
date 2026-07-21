@@ -20,7 +20,7 @@ export default async function DashboardPage() {
           posts: {
             where: { lastSeenAt: { gte: staleCutoff } },
             orderBy: { firstSeenAt: "desc" },
-            take: 50,
+            take: 100,
           },
         },
       },
@@ -34,6 +34,7 @@ export default async function DashboardPage() {
         title: p.title,
         url: p.url,
         dateLabel: p.dateLabel,
+        content: p.content,
         sortTime: (p.postedAt ?? p.firstSeenAt).toISOString(),
         firstSeenAt: p.firstSeenAt.toISOString(),
         sourceId: s.id,

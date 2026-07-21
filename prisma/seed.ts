@@ -21,12 +21,20 @@ async function main() {
       url: "https://dacon.io/competitions",
       type: "GENERIC_LINKS" as const,
       linkPattern: "^/competitions/official/\\d+",
+      closedSelector: 'img[alt="non participating"]',
       categoryId: contest.id,
     },
     {
       name: "캐글 대회 목록",
       url: "https://www.kaggle.com/competitions",
       type: "KAGGLE_API" as const,
+      linkPattern: null,
+      categoryId: contest.id,
+    },
+    {
+      name: "DAKER 해커톤 목록 (모집중만)",
+      url: "https://daker.ai/public/hackathons",
+      type: "DAKER_API" as const,
       linkPattern: null,
       categoryId: contest.id,
     },
@@ -42,6 +50,7 @@ async function main() {
       url: "https://www.scnu.ac.kr/SCNU/na/ntt/selectNttList.do?mi=1189&bbsId=1068",
       type: "GENERIC_LINKS" as const,
       linkPattern: "selectNttInfo\\.do\\?nttSn=\\d+",
+      contentSelector: "td.dragable",
       categoryId: job.id,
     },
   ];

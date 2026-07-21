@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import type { Source } from "@prisma/client";
 import { crawlGenericSource } from "./generic";
 import { crawlKaggleCompetitions } from "./kaggle";
+import { crawlDakerHackathons } from "./daker";
 import type { CrawledItem } from "./types";
 
 export interface CrawlResult {
@@ -17,6 +18,8 @@ async function fetchItems(source: Source): Promise<CrawledItem[]> {
   switch (source.type) {
     case "KAGGLE_API":
       return crawlKaggleCompetitions();
+    case "DAKER_API":
+      return crawlDakerHackathons();
     case "GENERIC_LINKS":
     default:
       return crawlGenericSource(source);
@@ -33,7 +36,15 @@ export async function crawlSource(source: Source): Promise<CrawlResult> {
       if (existing) {
         await prisma.post.update({
           where: { url: item.url },
-          data: { lastSeenAt: new Date(), dateLabel: item.dateLabel, postedAt: item.postedAt },
+          data: {
+            title: item.title,
+            lastSeenAt: new Date(),
+            dateLabel: item.dateLabel,
+            postedAt: item.postedAt,
+            // content가 null인 건 "이번엔 안 가져옴"이지 "본문이 없어졌다"는 뜻이 아니라서
+            // 이전에 캐시해둔 값(있다면)을 지우지 않는다.
+            ...(item.content ? { content: item.content } : {}),
+          },
         });
       } else {
         await prisma.post.create({
@@ -42,6 +53,7 @@ export async function crawlSource(source: Source): Promise<CrawlResult> {
             url: item.url,
             dateLabel: item.dateLabel,
             postedAt: item.postedAt,
+            content: item.content,
             sourceId: source.id,
           },
         });

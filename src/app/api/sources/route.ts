@@ -11,7 +11,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
-  const { name, url, categoryId, type, linkPattern } = body ?? {};
+  const { name, url, categoryId, type, linkPattern, contentSelector, closedSelector } = body ?? {};
 
   if (!name?.trim() || !url?.trim() || !categoryId) {
     return NextResponse.json({ error: "name, url, categoryId는 필수입니다." }, { status: 400 });
@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "url 형식이 올바르지 않습니다." }, { status: 400 });
   }
 
-  const sourceType = type === "KAGGLE_API" ? "KAGGLE_API" : "GENERIC_LINKS";
+  const sourceType = type === "KAGGLE_API" || type === "DAKER_API" ? type : "GENERIC_LINKS";
 
   if (sourceType === "GENERIC_LINKS") {
     if (!linkPattern?.trim()) {
@@ -50,6 +50,8 @@ export async function POST(req: NextRequest) {
       url: url.trim(),
       type: sourceType,
       linkPattern: sourceType === "GENERIC_LINKS" ? linkPattern.trim() : null,
+      contentSelector: sourceType === "GENERIC_LINKS" && contentSelector?.trim() ? contentSelector.trim() : null,
+      closedSelector: sourceType === "GENERIC_LINKS" && closedSelector?.trim() ? closedSelector.trim() : null,
       categoryId,
     },
   });

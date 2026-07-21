@@ -3,19 +3,26 @@ import type { Element } from "domhandler";
 import type { Source } from "@prisma/client";
 import type { CrawledItem } from "./types";
 import { parseDateLabel } from "./parseDate";
-
-const USER_AGENT =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
+import { USER_AGENT } from "./constants";
 
 const DATE_PATTERN = /\d{4}[.\-/]\d{1,2}[.\-/]\d{1,2}|~?\d{1,2}[./]\d{1,2}(?:\([월화수목금토일]\))?|D-\d+|D-DAY/i;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+// "새글" 아이콘처럼 제목이 아닌 배지성 이미지의 alt 텍스트를 걸러낸다.
+// (데이콘처럼 카드 썸네일의 alt가 곧 제목인 사이트가 있는 반면,
+//  순천대처럼 "새 글 알림" 아이콘의 alt가 앵커 안에서 먼저 잡히는 사이트도 있어서 구분이 필요함)
+const DECORATIVE_ALT_PATTERN = /^(new|hot|notice|알림|공지|첨부|필수|아이콘|new글|새\s*글)/i;
 
 function extractTitle($: cheerio.CheerioAPI, anchor: Element): string | null {
   const $a = $(anchor);
   const titleAttr = $a.attr("title")?.trim();
   if (titleAttr) return titleAttr;
 
-  const imgAlt = $a.find("img[alt]").first().attr("alt")?.trim();
+  const imgAlt = $a
+    .find("img[alt]")
+    .toArray()
+    .map((img) => $(img).attr("alt")?.trim())
+    .find((alt): alt is string => !!alt && !DECORATIVE_ALT_PATTERN.test(alt));
   if (imgAlt) return imgAlt;
 
   const text = $a.text().replace(/\s+/g, " ").trim();
@@ -27,6 +34,20 @@ function extractDateLabel($: cheerio.CheerioAPI, anchor: Element): string | null
   const scope = container.length ? container : $(anchor).parent();
   const match = scope.text().match(DATE_PATTERN);
   return match ? match[0] : null;
+}
+
+/**
+ * closedSelector가 설정된 소스에서, 카드/행 안에 그 셀렉터에 걸리는 요소가 있으면
+ * "모집/접수 마감"으로 보고 이 글은 건너뛴다. (예: 데이콘의 마감 배지 아이콘)
+ * 앵커 안쪽뿐 아니라(카드 전체가 링크인 경우) 같은 행/리스트아이템 안(링크와 배지가 형제인 경우)도 함께 본다.
+ */
+function isClosed($: cheerio.CheerioAPI, anchor: Element, closedSelector: string | null): boolean {
+  if (!closedSelector) return false;
+  const $a = $(anchor);
+  if ($a.find(closedSelector).length > 0) return true;
+
+  const container = $a.closest("tr, li").first();
+  return container.length > 0 && container.find(closedSelector).length > 0;
 }
 
 /**
@@ -89,6 +110,7 @@ export async function crawlGenericSource(source: Source): Promise<CrawledItem[]>
     }
 
     if (seen.has(absoluteUrl)) return;
+    if (isClosed($, el, source.closedSelector)) return;
 
     const title = extractTitle($, el);
     if (!title) return;
@@ -101,6 +123,7 @@ export async function crawlGenericSource(source: Source): Promise<CrawledItem[]>
       url: absoluteUrl,
       dateLabel,
       postedAt,
+      content: null, // 목록 크롤링 시에는 상세 페이지를 fetch하지 않고, "HTML 복사" 클릭 시점에 지연 추출한다
     });
   });
 

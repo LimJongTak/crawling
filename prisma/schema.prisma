@@ -23,6 +23,8 @@ model Source {
   url            String
   type           String    @default("GENERIC_LINKS")
   linkPattern    String? // 목록 페이지에서 상세글 링크를 찾는 정규식 (GENERIC_LINKS 타입에서 사용)
+  contentSelector String? // 상세 페이지에서 본문 영역을 찾는 CSS 셀렉터 ("HTML 복사"용, 선택사항)
+  closedSelector String? // 목록 카드/행 안에서 이 셀렉터가 있으면 "마감됨"으로 보고 크롤링에서 제외 (선택사항)
   isActive       Boolean   @default(true)
   lastCrawledAt  DateTime?
   lastStatus     String? // "success" | "error"
@@ -40,6 +42,7 @@ model Post {
   url         String   @unique
   dateLabel   String? // 원본 사이트에 표기된 날짜/마감일 텍스트 (형식이 제각각이라 원문 그대로 저장)
   postedAt    DateTime? // dateLabel을 실제 날짜로 파싱한 값 (정렬용). 파싱 불가 시 null -> firstSeenAt로 대체
+  content     String? // "HTML 복사"용 본문 (가능한 소스는 크롤링/최초 요청 시 채워짐, 캐시 목적)
   firstSeenAt DateTime @default(now())
   lastSeenAt  DateTime @default(now())
   sourceId    String

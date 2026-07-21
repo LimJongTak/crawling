@@ -34,3 +34,29 @@ export function sourceColor(sourceId: string) {
   }
   return SOURCE_PALETTE[hash % SOURCE_PALETTE.length];
 }
+
+export function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/**
+ * 크롤링한 글을 학교/사내 게시판 글쓰기 화면의 "HTML" 탭에 그대로 붙여넣을 수 있도록
+ * 만든 본문 스니펫. 제목은 "제목 복사" 버튼으로 별도 복사하므로 여기엔 넣지 않고,
+ * 본문(content, 있는 경우)과 원문 링크만 포함한다.
+ */
+export function buildPostHtml(post: {
+  title: string;
+  url: string;
+  sourceName: string;
+  dateLabel: string | null;
+  content?: string | null;
+}): string {
+  const lines: string[] = [];
+  if (post.content) lines.push(post.content);
+  lines.push(`<p>원문 링크: <a href="${post.url}" target="_blank" rel="noopener noreferrer">${post.url}</a></p>`);
+  return lines.join("\n");
+}

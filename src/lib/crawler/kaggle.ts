@@ -1,4 +1,5 @@
 import type { CrawledItem } from "./types";
+import { escapeHtml } from "@/lib/format";
 
 interface KaggleCompetition {
   ref?: string;
@@ -7,6 +8,8 @@ interface KaggleCompetition {
   deadline?: string;
   dateCreated?: string;
   enabledDate?: string;
+  description?: string;
+  reward?: string;
 }
 
 // "gettingStarted"(Titanic 등 튜토리얼용, 마감일이 2030년 등으로 무의미)과
@@ -50,16 +53,26 @@ export async function crawlKaggleCompetitions(): Promise<CrawledItem[]> {
     const data: KaggleCompetition[] = await res.json();
     if (!Array.isArray(data)) continue;
 
+    const now = Date.now();
+
     for (const c of data) {
       if (!c.ref || !c.title) continue;
+      if (!c.deadline || new Date(c.deadline).getTime() <= now) continue; // 마감(모집 종료)된 대회는 제외
+
       const url = c.url ?? c.ref;
       const createdRaw = c.dateCreated ?? c.enabledDate ?? null;
       const createdAt = createdRaw ? new Date(createdRaw) : null;
+
+      const contentLines: string[] = [];
+      if (c.description?.trim()) contentLines.push(`<p>${escapeHtml(c.description.trim())}</p>`);
+      if (c.reward?.trim()) contentLines.push(`<p>상금: ${escapeHtml(c.reward.trim())}</p>`);
+
       items.set(url, {
         title: c.title,
         url,
         dateLabel: c.deadline ?? null,
         postedAt: createdAt && !Number.isNaN(createdAt.getTime()) ? createdAt : null,
+        content: contentLines.length ? contentLines.join("\n") : null,
       });
     }
   }

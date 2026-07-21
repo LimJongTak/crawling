@@ -13,7 +13,7 @@ interface SourceItem {
   id: string;
   name: string;
   url: string;
-  type: "GENERIC_LINKS" | "KAGGLE_API";
+  type: "GENERIC_LINKS" | "KAGGLE_API" | "DAKER_API";
   linkPattern: string | null;
   isActive: boolean;
   lastCrawledAt: string | null;
@@ -47,13 +47,16 @@ export default function AdminPage() {
   const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null);
 
   const [newCategoryName, setNewCategoryName] = useState("");
+  const [showHelp, setShowHelp] = useState(false);
 
   const [form, setForm] = useState({
     name: "",
     url: "",
     categoryId: "",
-    type: "GENERIC_LINKS" as "GENERIC_LINKS" | "KAGGLE_API",
+    type: "GENERIC_LINKS" as "GENERIC_LINKS" | "KAGGLE_API" | "DAKER_API",
     linkPattern: "",
+    contentSelector: "",
+    closedSelector: "",
   });
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -102,7 +105,7 @@ export default function AdminPage() {
       setFormError(data.error ?? "추가에 실패했습니다.");
       return;
     }
-    setForm((f) => ({ ...f, name: "", url: "", linkPattern: "" }));
+    setForm((f) => ({ ...f, name: "", url: "", linkPattern: "", contentSelector: "", closedSelector: "" }));
     load();
   }
 
@@ -180,7 +183,107 @@ export default function AdminPage() {
       </section>
 
       <section className="mb-8 rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
-        <h2 className="mb-4 text-sm font-semibold text-neutral-900 dark:text-neutral-100">링크 추가</h2>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">링크 추가</h2>
+          <button
+            type="button"
+            onClick={() => setShowHelp((v) => !v)}
+            className="flex items-center gap-1 rounded-lg border border-neutral-200 px-2.5 py-1.5 text-xs font-medium text-neutral-500 transition-colors hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
+          >
+            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5">
+              <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth={1.8} fill="none" />
+              <path
+                d="M9.5 9.2a2.5 2.5 0 014.9.8c0 1.7-2.4 2-2.4 3.5M12 17h.01"
+                stroke="currentColor"
+                strokeWidth={1.8}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                fill="none"
+              />
+            </svg>
+            {showHelp ? "설명 닫기" : "작성 방법"}
+          </button>
+        </div>
+
+        {showHelp && (
+          <div className="mb-5 flex flex-col gap-4 rounded-xl border border-neutral-200 bg-neutral-50 p-4 text-xs leading-relaxed text-neutral-600 dark:border-neutral-800 dark:bg-neutral-950/60 dark:text-neutral-400">
+            <div>
+              <p className="mb-1 font-semibold text-neutral-800 dark:text-neutral-200">이름</p>
+              <p>관리 화면과 대시보드에 표시될 이 링크의 이름. 원하는 대로 자유롭게 입력하면 됩니다.</p>
+              <p className="mt-1 text-neutral-400">예: 잡코리아 AI·개발·데이터 TOP100</p>
+            </div>
+
+            <div>
+              <p className="mb-1 font-semibold text-neutral-800 dark:text-neutral-200">카테고리</p>
+              <p>이 링크가 어느 분류(경진대회/해커톤, 취업 관련 기타 등)에 속할지 선택합니다. 원하는 카테고리가 없으면 위쪽 "카테고리" 섹션에서 먼저 만들어주세요.</p>
+            </div>
+
+            <div>
+              <p className="mb-1 font-semibold text-neutral-800 dark:text-neutral-200">목록 페이지 URL</p>
+              <p>크롤링할 게시판/목록 페이지의 전체 주소. 로그인 없이 접속 가능한 공개 페이지여야 합니다.</p>
+              <p className="mt-1">
+                주의: 리액트/뷰 등으로 완전히 그려지는 SPA 사이트(예: 캐글, 데이커)는 페이지 소스를 봐도 목록 내용이 안 보여서 이 방식으로는 못 가져옵니다. 그런 사이트는 대신 아래 "타입"에서 전용 API를 고르거나, 별도 어댑터가 필요합니다.
+              </p>
+            </div>
+
+            <div>
+              <p className="mb-1 font-semibold text-neutral-800 dark:text-neutral-200">타입</p>
+              <p>
+                <span className="font-medium text-neutral-700 dark:text-neutral-300">일반</span>: 목록 페이지 HTML을 그대로 가져와서 아래 정규식으로 상세글 링크를 찾는 범용 방식. 공지사항, 채용공고 게시판처럼 대부분의 사이트에 사용합니다.
+              </p>
+              <p className="mt-1">
+                <span className="font-medium text-neutral-700 dark:text-neutral-300">Kaggle API 전용 / DAKER API 전용</span>: 이미 만들어둔 특정 사이트 전용 크롤러입니다. 목록 URL·정규식을 몰라도 되고, 이미 등록돼 있어서 새로 추가할 일은 거의 없습니다.
+              </p>
+            </div>
+
+            <div>
+              <p className="mb-1 font-semibold text-neutral-800 dark:text-neutral-200">
+                상세글 링크 정규식 <span className="font-normal text-neutral-400">("일반" 타입 필수)</span>
+              </p>
+              <p>
+                목록 페이지 안의 여러 {"<a href=\"...\">"} 중에서 "상세 게시글로 연결되는 링크"만 골라내는 정규식입니다.
+                브라우저에서 목록 페이지를 열고 게시글 제목을 마우스 우클릭 → "검사(Inspect)"를 눌러 그 링크의 href가 어떤 규칙(숫자 ID, 고정 경로 등)을 갖는지 확인한 뒤, 그 규칙만 정규식으로 적으면 됩니다.
+              </p>
+              <div className="mt-2 flex flex-col gap-1 rounded-lg bg-white p-2 font-mono text-[11px] dark:bg-neutral-900">
+                <span>데이콘: ^/competitions/official/\d+</span>
+                <span>잡코리아: /Recruit/GI_Read/\d+</span>
+                <span>순천대: selectNttInfo\.do\?nttSn=\d+</span>
+              </div>
+            </div>
+
+            <div>
+              <p className="mb-1 font-semibold text-neutral-800 dark:text-neutral-200">
+                본문 셀렉터 <span className="font-normal text-neutral-400">(선택)</span>
+              </p>
+              <p>
+                게시물의 "HTML 복사" 버튼을 눌렀을 때, 상세 페이지의 본문 전체를 가져오고 싶다면 그 본문이 들어있는 HTML 요소를 가리키는 CSS 셀렉터를 적습니다.
+                상세글 하나를 열어 본문 영역을 우클릭 → 검사 → 감싸고 있는 태그의 class나 id를 확인해서 <code className="rounded bg-white px-1 dark:bg-neutral-900">태그.클래스명</code> 형태로 입력하면 됩니다.
+              </p>
+              <p className="mt-1">비워두면 본문 대신 페이지의 요약 메타 정보(og:description 등)로 자동 대체되고, 그마저 없으면 링크만 복사됩니다.</p>
+              <div className="mt-2 flex flex-col gap-1 rounded-lg bg-white p-2 font-mono text-[11px] dark:bg-neutral-900">
+                <span>순천대: td.dragable</span>
+              </div>
+            </div>
+
+            <div>
+              <p className="mb-1 font-semibold text-neutral-800 dark:text-neutral-200">
+                마감 표시 셀렉터 <span className="font-normal text-neutral-400">(선택)</span>
+              </p>
+              <p>
+                목록 페이지에 이미 마감/종료된 것도 함께 섞여 나오는 사이트라면, "마감됨"을 나타내는 배지나 아이콘을 가리키는 CSS 셀렉터를 적어주세요.
+                크롤링할 때 그 카드/행 안에 이 셀렉터에 걸리는 요소가 있으면 그 글은 통째로 건너뛰어서, 모집 기간이 지난 글은 애초에 저장하지 않습니다.
+              </p>
+              <p className="mt-1">
+                예를 들어 데이콘 목록 페이지는 마감된 대회에 <code className="rounded bg-white px-1 dark:bg-neutral-900">{'<img alt="non participating">'}</code> 아이콘이 붙어서 나오는데, 이 속성을 셀렉터로 지정하면 그 대회만 제외됩니다.
+                비워두면 목록에 나오는 건 전부 가져옵니다(사이트 자체가 이미 모집중인 것만 보여준다면 굳이 안 넣어도 됩니다).
+              </p>
+              <div className="mt-2 flex flex-col gap-1 rounded-lg bg-white p-2 font-mono text-[11px] dark:bg-neutral-900">
+                <span>데이콘: img[alt=&quot;non participating&quot;]</span>
+              </div>
+            </div>
+          </div>
+        )}
+
         <form onSubmit={addSource} className="flex flex-col gap-3">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
@@ -223,25 +326,46 @@ export default function AdminPage() {
             <label className={labelClass}>타입</label>
             <select
               value={form.type}
-              onChange={(e) => setForm({ ...form, type: e.target.value as "GENERIC_LINKS" | "KAGGLE_API" })}
+              onChange={(e) => setForm({ ...form, type: e.target.value as "GENERIC_LINKS" | "KAGGLE_API" | "DAKER_API" })}
               className={inputClass}
             >
               <option value="GENERIC_LINKS">일반 (목록 페이지 + 링크 정규식)</option>
               <option value="KAGGLE_API">Kaggle API 전용</option>
+              <option value="DAKER_API">DAKER(데이콘 해커톤) API 전용</option>
             </select>
           </div>
 
           {form.type === "GENERIC_LINKS" && (
-            <div>
-              <label className={labelClass}>상세글 링크 정규식 (예: /Recruit/GI_Read/\d+)</label>
-              <input
-                value={form.linkPattern}
-                onChange={(e) => setForm({ ...form, linkPattern: e.target.value })}
-                placeholder="href 안에서 상세 게시물 링크를 찾는 정규식"
-                className={`${inputClass} font-mono`}
-                required
-              />
-            </div>
+            <>
+              <div>
+                <label className={labelClass}>상세글 링크 정규식 (예: /Recruit/GI_Read/\d+)</label>
+                <input
+                  value={form.linkPattern}
+                  onChange={(e) => setForm({ ...form, linkPattern: e.target.value })}
+                  placeholder="href 안에서 상세 게시물 링크를 찾는 정규식"
+                  className={`${inputClass} font-mono`}
+                  required
+                />
+              </div>
+              <div>
+                <label className={labelClass}>본문 셀렉터 (선택, 예: td.dragable)</label>
+                <input
+                  value={form.contentSelector}
+                  onChange={(e) => setForm({ ...form, contentSelector: e.target.value })}
+                  placeholder="상세 페이지에서 본문 영역을 가리키는 CSS 셀렉터 - &quot;HTML 복사&quot;에 사용됨"
+                  className={`${inputClass} font-mono`}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>마감 표시 셀렉터 (선택, 예: img[alt=&quot;non participating&quot;])</label>
+                <input
+                  value={form.closedSelector}
+                  onChange={(e) => setForm({ ...form, closedSelector: e.target.value })}
+                  placeholder="목록 카드/행 안에 이게 있으면 마감으로 보고 크롤링에서 제외"
+                  className={`${inputClass} font-mono`}
+                />
+              </div>
+            </>
           )}
 
           {formError && (

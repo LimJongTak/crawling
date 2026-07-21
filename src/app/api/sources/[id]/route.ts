@@ -9,6 +9,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (typeof body?.name === "string" && body.name.trim()) data.name = body.name.trim();
   if (typeof body?.url === "string" && body.url.trim()) data.url = body.url.trim();
   if (typeof body?.linkPattern === "string") data.linkPattern = body.linkPattern.trim() || null;
+  if (typeof body?.contentSelector === "string") data.contentSelector = body.contentSelector.trim() || null;
+  if (typeof body?.closedSelector === "string") data.closedSelector = body.closedSelector.trim() || null;
 
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: "수정할 필드가 없습니다." }, { status: 400 });
