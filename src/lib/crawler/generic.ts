@@ -96,11 +96,24 @@ export async function crawlGenericSource(source: Source): Promise<CrawledItem[]>
   const $ = cheerio.load(html);
   const pattern = new RegExp(source.linkPattern);
 
+  // 같은 상세글을 가리키는 앵커가 목록 페이지에 여러 개 있을 수 있다(제목 링크, 뱃지 링크 등).
+  // 잡코리아처럼 그 앵커들의 href가 트래킹용 쿼리스트링만 다르고(예: &PageGbn=ST 유무) 실제로는
+  // 같은 글을 가리키는 경우, 전체 URL로 구분하면 같은 글이 중복 저장된다.
+  // 그래서 "이 글이 맞다"를 판별하는 linkPattern이 실제로 매칭한 부분(잡 ID 등 핵심 식별자)만
+  // 중복 판정 키(dedupeKey)로 쓰고, 실제 방문 링크로는 처음 만난 앵커의 전체 URL을 그대로 둔다.
+  // 이 dedupeKey는 크롤 실행 사이에도 안정적이어야 해서(index.ts에서 DB에 이미 저장된 글과
+  // 비교할 때도 재사용) href의 매칭된 부분 문자열 그대로를 키로 쓴다.
   const seen = new Map<string, CrawledItem>();
 
   $("a[href]").each((_, el) => {
     const href = $(el).attr("href");
-    if (!href || !pattern.test(href)) return;
+    if (!href) return;
+    const match = href.match(pattern);
+    if (!match) return;
+
+    const dedupeKey = match[0];
+    if (seen.has(dedupeKey)) return;
+    if (isClosed($, el, source.closedSelector)) return;
 
     let absoluteUrl: string;
     try {
@@ -109,21 +122,19 @@ export async function crawlGenericSource(source: Source): Promise<CrawledItem[]>
       return;
     }
 
-    if (seen.has(absoluteUrl)) return;
-    if (isClosed($, el, source.closedSelector)) return;
-
     const title = extractTitle($, el);
     if (!title) return;
 
     const dateLabel = extractDateLabel($, el);
     const postedAt = extractBrazeInfoPostedAt($, el) ?? parseDateLabel(dateLabel);
 
-    seen.set(absoluteUrl, {
+    seen.set(dedupeKey, {
       title,
       url: absoluteUrl,
       dateLabel,
       postedAt,
       content: null, // 목록 크롤링 시에는 상세 페이지를 fetch하지 않고, "HTML 복사" 클릭 시점에 지연 추출한다
+      dedupeKey,
     });
   });
 

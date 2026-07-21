@@ -31,13 +31,32 @@ export async function crawlSource(source: Source): Promise<CrawlResult> {
     const items = await fetchItems(source);
     let newCount = 0;
 
+    // 같은 글이라도 크롤링 때마다 트래킹용 쿼리스트링이 다른 href가 선택될 수 있어(generic.ts 참고),
+    // url만으로는 이전에 저장해둔 글과 매칭이 안 될 수 있다. 이 소스에 이미 저장된 글들의 dedupeKey를
+    // 미리 뽑아두고, url이 정확히 같지 않아도 dedupeKey가 같으면 같은 글로 보고 갱신한다.
+    const dedupePattern = source.linkPattern ? new RegExp(source.linkPattern.replace(/^\^/, "")) : null;
+    const existingIdByDedupeKey = new Map<string, string>();
+    if (dedupePattern) {
+      const existingPosts = await prisma.post.findMany({
+        where: { sourceId: source.id },
+        select: { id: true, url: true },
+      });
+      for (const p of existingPosts) {
+        const key = p.url.match(dedupePattern)?.[0];
+        if (key) existingIdByDedupeKey.set(key, p.id);
+      }
+    }
+
     for (const item of items) {
       const existing = await prisma.post.findUnique({ where: { url: item.url } });
-      if (existing) {
+      const existingId = existing?.id ?? (item.dedupeKey ? existingIdByDedupeKey.get(item.dedupeKey) : undefined);
+
+      if (existingId) {
         await prisma.post.update({
-          where: { url: item.url },
+          where: { id: existingId },
           data: {
             title: item.title,
+            url: item.url,
             lastSeenAt: new Date(),
             dateLabel: item.dateLabel,
             postedAt: item.postedAt,
