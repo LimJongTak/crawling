@@ -44,6 +44,7 @@ export default function AdminPage() {
   const [sources, setSources] = useState<SourceItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [crawlingId, setCrawlingId] = useState<string | null>(null);
+  const [crawlingAll, setCrawlingAll] = useState(false);
   const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null);
 
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -137,6 +138,29 @@ export default function AdminPage() {
       }
     } finally {
       setCrawlingId(null);
+      load();
+    }
+  }
+
+  async function crawlAllNow() {
+    setCrawlingAll(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/sources/crawl-all", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        const results: { ok: boolean; foundCount: number; newCount: number }[] = data.results ?? [];
+        const successCount = results.filter((r) => r.ok).length;
+        const newTotal = results.reduce((sum, r) => sum + r.newCount, 0);
+        setMessage({
+          text: `전체 크롤링 완료: ${successCount}/${results.length}개 소스 성공, 신규 ${newTotal}건`,
+          ok: results.every((r) => r.ok),
+        });
+      } else {
+        setMessage({ text: `전체 크롤링 실패: ${data.error ?? "알 수 없는 오류"}`, ok: false });
+      }
+    } finally {
+      setCrawlingAll(false);
       load();
     }
   }
@@ -379,7 +403,16 @@ export default function AdminPage() {
       </section>
 
       <section>
-        <h2 className="mb-3 text-sm font-semibold text-neutral-900 dark:text-neutral-100">등록된 링크</h2>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">등록된 링크</h2>
+          <button
+            onClick={crawlAllNow}
+            disabled={crawlingAll || sources.length === 0}
+            className="rounded-lg bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-neutral-800 disabled:opacity-50 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200"
+          >
+            {crawlingAll ? "전체 크롤링 중..." : "전체 지금 크롤링"}
+          </button>
+        </div>
         {loading ? (
           <div className="flex flex-col gap-3">
             {[0, 1, 2].map((i) => (

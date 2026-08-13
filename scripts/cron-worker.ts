@@ -3,7 +3,7 @@ import { crawlAll } from "../src/lib/crawler";
 
 /**
  * Vercel처럼 서버리스 환경이 아니라 VPS/PM2 등 상시 구동되는 서버에 배포한 경우 사용.
- * `npm run cron` 으로 실행하면 매일 08:00(Asia/Seoul)에 전체 소스를 크롤링한다.
+ * `npm run cron` 으로 실행하면 매일 09:00(Asia/Seoul)에 전체 소스를 크롤링한다.
  * Vercel에 배포한다면 이 스크립트 대신 vercel.json의 cron 설정이 사용되므로 실행할 필요 없다.
  */
 async function runOnce() {
@@ -16,8 +16,8 @@ async function runOnce() {
   }
 }
 
-cron.schedule("0 8 * * *", runOnce, { timezone: "Asia/Seoul" });
-console.log("[cron-worker] 스케줄 등록 완료: 매일 08:00 (Asia/Seoul)");
+cron.schedule("0 9 * * *", runOnce, { timezone: "Asia/Seoul" });
+console.log("[cron-worker] 스케줄 등록 완료: 매일 09:00 (Asia/Seoul)");
 
 if (process.argv.includes("--now")) {
   runOnce();
