@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
 }
 
 model Category {
@@ -16,7 +17,7 @@ model Category {
   sources   Source[]
 }
 
-// SQLite는 네이티브 enum을 지원하지 않아 문자열로 관리한다: "GENERIC_LINKS" | "KAGGLE_API"
+// 문자열로 관리한다: "GENERIC_LINKS" | "KAGGLE_API" | "DAKER_API"
 model Source {
   id             String    @id @default(cuid())
   name           String

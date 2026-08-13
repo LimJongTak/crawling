@@ -1,12 +1,12 @@
 # 정보 크롤링 트래커
 
-로그인한 관리자만 볼 수 있는, 카테고리별(경진대회/해커톤, 취업 등) 크롤링 정보 대시보드.
-매일 아침 8시(KST)에 등록된 링크들을 자동으로 크롤링해서 새 글을 모아 보여준다.
+로그인한 관리자(비밀번호를 아는 본인)만 볼 수 있는, 카테고리별(경진대회/해커톤, 취업 등) 크롤링 정보 대시보드.
+매일 아침 9시(KST)에 등록된 링크들을 자동으로 크롤링해서 새 글을 모아 보여준다.
 
 ## 기술 스택
 
 - Next.js 14 (App Router, TypeScript)
-- Prisma + SQLite (로컬/VPS 기본값. 서버리스 배포 시 Postgres로 교체 권장)
+- Prisma + Postgres (Neon)
 - cheerio (정적 HTML 크롤링), Kaggle 공식 API (SPA라 별도 처리)
 - jose 기반 세션 쿠키 로그인 (관리자 1인용)
 
@@ -26,7 +26,8 @@ npm run dev
 
 | 변수 | 설명 |
 |---|---|
-| `DATABASE_URL` | Prisma 연결 문자열. 기본 `file:./dev.db` (SQLite) |
+| `DATABASE_URL` | Prisma 연결 문자열 (Postgres, pooled) |
+| `DATABASE_URL_UNPOOLED` | Prisma Migrate용 direct 연결 문자열 (Postgres) |
 | `ADMIN_PASSWORD` | 로그인 비밀번호 |
 | `SESSION_SECRET` | 로그인 세션 쿠키 서명용 랜덤 문자열 (32자 이상 권장) |
 | `CRON_SECRET` | `/api/cron/crawl` 호출 인증용 랜덤 문자열 |
@@ -61,24 +62,24 @@ npm run dev
 숨긴다. 삭제하는 건 아니라서 DB에는 남아있고, 다시 목록에 나타나면 자동으로 다시 보인다.
 기간을 바꾸고 싶으면 `src/app/page.tsx`의 `STALE_AFTER_DAYS` 값을 수정하면 된다.
 
-## 매일 아침 8시 자동 크롤링
+## 매일 아침 9시 자동 크롤링
 
 두 가지 방식을 모두 지원한다. 배포 환경에 맞는 쪽 하나만 쓰면 된다.
 
-### 1) Vercel 등 서버리스에 배포하는 경우
+### 1) Vercel 등 서버리스에 배포하는 경우 (기본값)
 
-`vercel.json`에 이미 cron이 설정되어 있다 (`0 23 * * *` UTC = 매일 08:00 KST).
+`vercel.json`에 이미 cron이 설정되어 있다 (`0 0 * * *` UTC = 매일 09:00 KST).
 Vercel 프로젝트 환경변수에 `CRON_SECRET`을 설정해두면, Vercel이 자동으로
 `Authorization: Bearer <CRON_SECRET>` 헤더를 붙여 `/api/cron/crawl`을 호출한다.
 
-**주의**: SQLite 파일은 서버리스 배포에서 영속되지 않는다. Vercel에 배포할 계획이면
-Neon/Supabase 같은 호스팅 Postgres로 `DATABASE_URL`을 바꾸고 `prisma/schema.prisma`의
-`datasource db.provider`를 `"postgresql"`로 변경한 뒤 `prisma migrate deploy`를 실행해야 한다.
+DB는 Vercel Marketplace의 Neon(Postgres) 통합을 사용한다 (`DATABASE_URL`,
+`DATABASE_URL_UNPOOLED`가 프로젝트에 자동으로 연결되어 있음). 서버리스 함수는
+파일시스템이 영속되지 않으므로 SQLite는 쓸 수 없다.
 
 ### 2) VPS 등 상시 구동 서버에 배포하는 경우
 
-SQLite 그대로 써도 된다. 앱과 별도로 아래 명령을 pm2 등으로 계속 띄워두면
-node-cron이 매일 08:00(Asia/Seoul)에 자동 실행된다.
+Postgres `DATABASE_URL`을 그대로 쓰면 된다. 앱과 별도로 아래 명령을 pm2 등으로
+계속 띄워두면 node-cron이 매일 09:00(Asia/Seoul)에 자동 실행된다.
 
 ```bash
 npm run cron
